@@ -91,6 +91,11 @@ namespace Rampastring.XNAUI.XNAControls
             Tabs.RemoveAt(index);
         }
 
+        public void ChangeTabText(int index, string text)
+        {
+            Tabs[index].Text = text;
+        }
+
         public void AddTab(string text, Texture2D defaultTexture, Texture2D pressedTexture)
         {
             AddTab(text, defaultTexture, pressedTexture, true);
@@ -127,6 +132,12 @@ namespace Rampastring.XNAUI.XNAControls
                 int index = int.Parse(key.Substring(14));
                 if (Conversions.BooleanFromString(value, false))
                     RemoveTab(index);
+            }
+
+            if (key.StartsWith("ChangeTabText"))
+            {
+                int index = int.Parse(key.Substring(13));
+                ChangeTabText(index, value);
             }
 
             base.ParseAttributeFromINI(iniFile, key, value);
