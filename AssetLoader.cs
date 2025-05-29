@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework.Audio;
+using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Media;
@@ -128,14 +128,31 @@ public static class AssetLoader
             {
                 FileInfo fileInfo = SafePath.GetFile(searchPath, name);
 
-                if (fileInfo.Exists)
-                {
-                    using FileStream fs = fileInfo.OpenRead();
-                    var texture = Texture2D.FromStream(graphicsDevice, fs);
-                    texture.Name = name;
-                    PremultiplyAlpha(texture);
+                if (!fileInfo.Exists)
+                    continue;
 
-                    return texture;
+                Texture2D texture;
+                IImageFormat imageFormat;
+
+                switch (fileInfo.Extension.ToLowerInvariant())
+                {
+                    case ".webp":
+                        using (FileStream fs = fileInfo.OpenRead())
+                            texture = AssetLoader.TextureFromImage(Image.Load(fs, out imageFormat).Frames.CloneFrame(0));
+
+                        texture.Name = name;
+                        PremultiplyAlpha(texture);
+
+                        return texture;
+                    case ".png":
+                    default:
+                        using (FileStream fs = fileInfo.OpenRead())
+                            texture = Texture2D.FromStream(graphicsDevice, fs);
+                        
+                        texture.Name = name;
+                        PremultiplyAlpha(texture);
+
+                        return texture;
                 }
             }
         }
