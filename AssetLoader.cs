@@ -139,21 +139,16 @@ public static class AssetLoader
                     case ".webp":
                         using (FileStream fs = fileInfo.OpenRead())
                             texture = AssetLoader.TextureFromImage(Image.Load(fs, out imageFormat).Frames.CloneFrame(0));
-
-                        texture.Name = name;
-                        PremultiplyAlpha(texture);
-
-                        return texture;
                     case ".png":
                     default:
                         using (FileStream fs = fileInfo.OpenRead())
                             texture = Texture2D.FromStream(graphicsDevice, fs);
-                        
-                        texture.Name = name;
-                        PremultiplyAlpha(texture);
-
-                        return texture;
                 }
+
+                texture.Name = name;
+                PremultiplyAlpha(texture);
+
+                return texture;
             }
         }
         catch (Exception ex)

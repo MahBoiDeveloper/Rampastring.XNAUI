@@ -67,7 +67,6 @@ public class Animation
                 break;
             default:
                 throw new NotSupportedException("Unsupported image format for animation: " + format.Name);
-                break;
         }
     }
 
