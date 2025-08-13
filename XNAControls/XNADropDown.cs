@@ -36,6 +36,11 @@ public class XNADropDown : XNAControl
     public event EventHandler IndexReselected;
 
     /// <summary>
+    /// The index of the top-most visible drop down item.
+    /// </summary>
+    public int TopIndex { get; set; }
+
+    /// <summary>
     /// The height of drop-down items.
     /// </summary>
     public int ItemHeight { get; set; } = 17;
@@ -169,6 +174,7 @@ public class XNADropDown : XNAControl
 
     private int hoveredIndex = 0;
     private bool clickedAfterOpen = false;
+    private int numFittingItems = 0;
 
     #region AddItem methods
 
@@ -311,12 +317,14 @@ public class XNADropDown : XNAControl
         }
     }
 
-    public override void OnMouseLeftDown()
+    public override void OnMouseLeftDown(InputEventArgs inputEventArgs)
     {
-        base.OnMouseLeftDown();
+        base.OnMouseLeftDown(inputEventArgs);
 
         if (!AllowDropDown)
             return;
+
+        inputEventArgs.Handled = true;
 
         if (DropDownState != DropDownState.CLOSED)
             return;
@@ -325,25 +333,35 @@ public class XNADropDown : XNAControl
 
         clickedAfterOpen = false;
 
-        if (!OpenUp)
-        {
-            DropDownState = DropDownState.OPENED_DOWN;
-            Height = DropDownTexture.Height + 2 + ItemHeight * Items.Count;
-        }
-        else
-        {
-            DropDownState = DropDownState.OPENED_UP;
-            Y -= 1 + ItemHeight * Items.Count;
-            Height = DropDownTexture.Height + 1 + ItemHeight * Items.Count;
-        }
+        OpenDropDown();
 
         Detach();
         hoveredIndex = -1;
     }
 
-    public override void OnLeftClick()
+    public void OpenDropDown()
     {
-        base.OnLeftClick();
+        TopIndex = 0;
+
+        if (!OpenUp)
+        {
+            DropDownState = DropDownState.OPENED_DOWN;
+            numFittingItems = (WindowManager.RenderResolutionY - (GetWindowRectangle().Bottom + 1)) / ItemHeight;
+            Height = DropDownTexture.Height + 2 + ItemHeight * Math.Min(numFittingItems, Items.Count);
+        }
+        else
+        {
+            DropDownState = DropDownState.OPENED_UP;
+            numFittingItems = Items.Count; // TODO
+            Y -= 1 + ItemHeight * Math.Min(numFittingItems, Items.Count);
+            Height = DropDownTexture.Height + 1 + ItemHeight * Math.Min(numFittingItems, Items.Count);
+        }
+    }
+
+    public override void OnLeftClick(InputEventArgs inputEventArgs)
+    {
+        base.OnLeftClick(inputEventArgs);
+        inputEventArgs.Handled = true;
 
         if (DropDownState == DropDownState.CLOSED)
         {
@@ -383,30 +401,67 @@ public class XNADropDown : XNAControl
         Attach();
     }
 
-    public override void OnMouseScrolled()
+    public override void OnMouseScrolled(InputEventArgs inputEventArgs)
     {
         if (!AllowDropDown)
             return;
 
-        if (Cursor.ScrollWheelValue < 0)
+        if (DropDownState == DropDownState.CLOSED || GetCursorPoint().Y <= DropDownTexture.Height)
         {
-            if (SelectedIndex >= Items.Count - 1)
-                return;
+            if (Cursor.ScrollWheelValue < 0)
+            {
+                if (SelectedIndex >= Items.Count - 1)
+                    return;
 
-            if (Items[SelectedIndex + 1].Selectable)
-                SelectedIndex++;
+                inputEventArgs.Handled = true;
+
+                if (Items[SelectedIndex + 1].Selectable)
+                    SelectedIndex++;
+            }
+
+            if (Cursor.ScrollWheelValue > 0)
+            {
+                if (SelectedIndex < 1)
+                    return;
+
+                inputEventArgs.Handled = true;
+
+                if (Items[SelectedIndex - 1].Selectable)
+                    SelectedIndex--;
+            }
+        }
+        else if (AllowScrollingItemList())
+        {
+            if (DropDownState == DropDownState.OPENED_DOWN)
+            {
+                if (Cursor.ScrollWheelValue < 0)
+                {
+                    if (TopIndex + numFittingItems < Items.Count)
+                    {
+                        inputEventArgs.Handled = true;
+                        TopIndex = Math.Min(Items.Count - numFittingItems, TopIndex + 3);
+                    }
+                }
+                else if (Cursor.ScrollWheelValue > 0)
+                {
+                    if (TopIndex > 0)
+                    {
+                        inputEventArgs.Handled = true;
+                        TopIndex = Math.Max(0, TopIndex - 3);
+                    }
+                }
+            }
         }
 
-        if (Cursor.ScrollWheelValue > 0)
-        {
-            if (SelectedIndex < 1)
-                return;
+        base.OnMouseScrolled(inputEventArgs);
+    }
 
-            if (Items[SelectedIndex - 1].Selectable)
-                SelectedIndex--;
-        }
+    private bool AllowScrollingItemList()
+    {
+        if (OpenUp)
+            return false; // we don't support this yet
 
-        base.OnMouseScrolled();
+        return numFittingItems < Items.Count;
     }
 
     /// <summary>
@@ -431,9 +486,9 @@ public class XNADropDown : XNAControl
                 return -1;
 
             int y = p.Y - DropDownTexture.Height - 1;
-            itemIndex = y / ItemHeight;
+            itemIndex = TopIndex + (y / ItemHeight);
         }
-        else // if (DropDownState == DropDownState.DROPPED_UP)
+        else // if (DropDownState == DropDownState.OPENED_UP)
         {
             if (p.Y > ClientRectangle.Height - DropDownTexture.Height - 1)
                 return -1;
@@ -505,10 +560,10 @@ public class XNADropDown : XNAControl
 
                 DrawRectangle(listRectangle, BorderColor);
 
-                for (int i = 0; i < Items.Count; i++)
+                for (int i = 0; i < Math.Min(numFittingItems, Items.Count - TopIndex); i++)
                 {
                     int y = listRectangle.Y + 1 + i * ItemHeight;
-                    DrawItem(i, y);
+                    DrawItem(TopIndex + i, y);
                 }
             }
             else

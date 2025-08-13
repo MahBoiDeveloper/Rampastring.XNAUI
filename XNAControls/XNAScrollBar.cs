@@ -24,15 +24,21 @@ public class XNAScrollBar : XNAControl
         var scrollUpTexture = AssetLoader.LoadTexture("sbUpArrow.png");
 
         btnScrollUp = new XNAButton(WindowManager);
+        btnScrollUp.Name = nameof(btnScrollUp);
         btnScrollUp.ClientRectangle = new Rectangle(0, 0, scrollUpTexture.Width, scrollUpTexture.Height);
         btnScrollUp.IdleTexture = scrollUpTexture;
+        if (AssetLoader.AssetExists("sbUpArrowHovered.png"))
+            btnScrollUp.HoverTexture = AssetLoader.LoadTexture("sbUpArrowHovered.png");
 
         var scrollDownTexture = AssetLoader.LoadTexture("sbDownArrow.png");
 
         btnScrollDown = new XNAButton(WindowManager);
+        btnScrollDown.Name = nameof(btnScrollDown);
         btnScrollDown.ClientRectangle = new Rectangle(0, Height - scrollDownTexture.Height,
             scrollDownTexture.Width, scrollDownTexture.Height);
         btnScrollDown.IdleTexture = scrollDownTexture;
+        if (AssetLoader.AssetExists("sbDownArrowHovered.png"))
+            btnScrollDown.HoverTexture = AssetLoader.LoadTexture("sbDownArrowHovered.png");
 
         ClientRectangleUpdated += XNAScrollBar_ClientRectangleUpdated;
     }
@@ -124,6 +130,17 @@ public class XNAScrollBar : XNAControl
         thumbBottom = AssetLoader.LoadTexture("sbThumbBottom.png");
     }
 
+    public override void Kill()
+    {
+        // These textures are cached, don't allow the buttons to dispose them
+        btnScrollDown.IdleTexture = null;
+        btnScrollDown.HoverTexture = null;
+        btnScrollUp.IdleTexture = null;
+        btnScrollUp.HoverTexture = null;
+
+        base.Kill();
+    }
+
     /// <summary>
     /// Scrolls up when the user presses on the "scroll up" arrow.
     /// </summary>
@@ -202,11 +219,15 @@ public class XNAScrollBar : XNAControl
     /// <summary>
     /// Scrolls the scrollbar when it's clicked on.
     /// </summary>
-    public override void OnLeftClick()
+    public override void OnLeftClick(InputEventArgs inputEventArgs)
     {
-        base.OnLeftClick();
+        if (IsDrawn())
+        {
+            inputEventArgs.Handled = true;
+            base.OnLeftClick(inputEventArgs);
 
-        Scroll();
+            Scroll();
+        }
     }
 
     /// <summary>
@@ -235,8 +256,7 @@ public class XNAScrollBar : XNAControl
             return;
         }
 
-
-        if (point.Y <= buttonMinY)
+        if (point.Y <= buttonMinY || DisplayedPixelCount >= Length)
         {
             ViewTop = 0;
             RefreshButtonY();
