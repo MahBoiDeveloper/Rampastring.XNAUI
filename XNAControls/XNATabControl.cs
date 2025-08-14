@@ -19,6 +19,8 @@ public class XNATabControl : XNAControl
     public delegate void SelectedIndexChangedEventHandler(object sender, EventArgs e);
     public event SelectedIndexChangedEventHandler SelectedIndexChanged;
 
+    public XNAToolTip ToolTip { get; private set; }
+
     private int _selectedTab = 0;
     public int SelectedTab
     {
