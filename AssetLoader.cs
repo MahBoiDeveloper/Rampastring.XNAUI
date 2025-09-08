@@ -5,6 +5,7 @@ using Microsoft.Xna.Framework.Media;
 using Rampastring.Tools;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats;
+using SixLabors.ImageSharp.Formats.Gif;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.PixelFormats;
 using System;
@@ -93,12 +94,10 @@ public static class AssetLoader
             return cachedAnimation;
         
         IImageFormat imageFormat;
-        var image = LoadAnimationInternal(name, out imageFormat);
+        var image = LoadAnimationInternal(name);
+        
         if (image != null)
         {
-            cachedAnimation = new Animation(image, imageFormat);
-            animationsCache.Add(name, cachedAnimation);
-
             return cachedAnimation;
         }
 
@@ -147,7 +146,7 @@ public static class AssetLoader
         return null;
     }
 
-    private static Image LoadAnimationInternal(string name, out IImageFormat imageFormat)
+    private static Image LoadAnimationInternal(string name)
     {
         try
         {
@@ -158,7 +157,9 @@ public static class AssetLoader
                 if (fileInfo.Exists)
                 {
                     using FileStream fs = fileInfo.OpenRead();
-                    var animation = Image.Load(fs, out imageFormat);
+                    GifDecoder decoder = new();
+                    decoder.MaxFrames = 10;
+                    var animation = Image.Load(fs, decoder);
 
                     return animation;
                 }
@@ -169,7 +170,6 @@ public static class AssetLoader
             Logger.Log($"{nameof(AssetLoader)}.{nameof(LoadAnimationInternal)}: loading animation {name} failed! Message: {ex.Message}");
         }
 
-        imageFormat = null;
         return null;
     }
 
