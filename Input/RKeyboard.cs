@@ -2,7 +2,6 @@
 using Microsoft.Xna.Framework.Input;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace Rampastring.XNAUI.Input;
 
@@ -14,17 +13,25 @@ public class RKeyboard : GameComponent
     public RKeyboard(Game game)
         : base(game)
     {
-        PressedKeys = new List<Keys>();
         KeyboardState = Keyboard.GetState();
     }
 
     public delegate void KeyPressedEventHandler(object sender, KeyPressEventArgs e);
+
+    /// <summary>
+    /// Triggered when a key has been pressed, iow. pressed down and then released.
+    /// </summary>
     public event KeyPressedEventHandler OnKeyPressed;
 
-    public KeyboardState KeyboardState;
-    private Keys[] DownKeys = new Keys[0];
+    /// <summary>
+    /// Triggered when a key has been first pressed down.
+    /// </summary>
+    public event KeyPressedEventHandler OnKeyDown;
 
-    public List<Keys> PressedKeys;
+    public KeyboardState KeyboardState;
+
+    public List<Keys> PressedKeys = new List<Keys>();
+    public List<Keys> DownKeys = new List<Keys>();
 
     public override void Update(GameTime gameTime)
     {
@@ -43,7 +50,28 @@ public class RKeyboard : GameComponent
             }
         }
 
-        DownKeys = KeyboardState.GetPressedKeys();
+        var newDownKeys = KeyboardState.GetPressedKeys();
+        Span<bool> isNewKey = stackalloc bool[newDownKeys.Length];
+
+        // Gather which of the pressed keys were pushed down on this frame for the first time.
+        // This must be done before DownKeys is assigned to match the keys pressed down on this frame (or otherwise we'd have nothing to compare to),
+        // but before DoKeyDown is called for the new keys so that any potential keyboard event handlers firing on this frame can check DownKeys with the updated state.
+        for (int i = 0; i < newDownKeys.Length; i++)
+        {
+            // Stack-allocated memory is not initialized so we need to write over all entries in the span.
+            isNewKey[i] = !DownKeys.Contains(newDownKeys[i]);
+        }
+
+        // Set DownKeys to match the keys pressed down on this frame.
+        DownKeys.Clear();
+        DownKeys.AddRange(newDownKeys);
+
+        // Call DoKeyDown for the keys that were newly pressed down on this frame.
+        for (int i = 0; i < DownKeys.Count; i++)
+        {
+            if (isNewKey[i])
+                DoKeyDown(DownKeys[i]);
+        }
     }
 
     private void DoKeyPress(Keys key)
@@ -51,6 +79,21 @@ public class RKeyboard : GameComponent
         if (OnKeyPressed != null)
         {
             Delegate[] delegates = OnKeyPressed.GetInvocationList();
+            var args = new KeyPressEventArgs(key);
+            for (int i = 0; i < delegates.Length; i++)
+            {
+                delegates[i].DynamicInvoke(this, args);
+                if (args.Handled)
+                    return;
+            }
+        }
+    }
+
+    private void DoKeyDown(Keys key)
+    {
+        if (OnKeyDown != null)
+        {
+            Delegate[] delegates = OnKeyDown.GetInvocationList();
             var args = new KeyPressEventArgs(key);
             for (int i = 0; i < delegates.Length; i++)
             {

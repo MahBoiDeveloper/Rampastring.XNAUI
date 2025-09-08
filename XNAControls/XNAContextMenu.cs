@@ -26,10 +26,15 @@ public class XNAContextMenuItem
     public string Text { get; set; }
 
     /// <summary>
-    /// The hint text of the context menu item.
+    /// A function for generating the hint text of the context menu item.
     /// Drawn in the end of the item.
     /// </summary>
-    public string HintText { get; set; }
+    public Func<string> HintTextGenerator { get; set; }
+
+    /// <summary>
+    /// Cached hint text of the context menu item.
+    /// </summary>
+    internal string HintText { get; set; }
 
     /// <summary>
     /// Determines whether the context menu item is enabled
@@ -110,6 +115,7 @@ public class XNAContextMenu : XNAControl
     /// <param name="windowManager">The WindowManager associated with this context menu.</param>
     public XNAContextMenu(WindowManager windowManager) : base(windowManager)
     {
+        ItemHeight = UISettings.ActiveSettings.ContextMenuDefaultItemHeight.GetValueOrDefault((int)Renderer.MeasureString("Test String @", FontIndex).Y + 1);
         Height = BORDER_WIDTH * 2;
         DisabledItemColor = Color.Gray;
         Disable();
@@ -199,7 +205,7 @@ public class XNAContextMenu : XNAControl
         AddItem(item);
     }
 
-    public void AddItem(string text, Action selectAction, Func<bool> selectableChecker = null, Func<bool> visibilityChecker = null, Texture2D texture = null, string hintText = null)
+    public void AddItem(string text, Action selectAction, Func<bool> selectableChecker = null, Func<bool> visibilityChecker = null, Texture2D texture = null, Func<string> hintTextGenerator = null)
     {
         var item = new XNAContextMenuItem()
         {
@@ -208,7 +214,7 @@ public class XNAContextMenu : XNAControl
             SelectableChecker = selectableChecker,
             VisibilityChecker = visibilityChecker,
             Texture = texture,
-            HintText = hintText
+            HintTextGenerator = hintTextGenerator
         };
 
         AddItem(item);
@@ -243,6 +249,15 @@ public class XNAContextMenu : XNAControl
 
             if (item.SelectableChecker != null)
                 item.Selectable = item.SelectableChecker();
+
+            if (item.HintTextGenerator != null)
+            {
+                item.HintText = item.HintTextGenerator();
+            }
+            else
+            {
+                item.HintText = null;
+            }
         }
 
         Height = height;
@@ -257,7 +272,30 @@ public class XNAContextMenu : XNAControl
             X -= Width;
 
         if (windowPoint.Y + Height > WindowManager.RenderResolutionY)
-            Y -= Height;
+        {
+            int screenTopPointY = point.Y - windowPoint.Y;
+
+            if (Height > WindowManager.RenderResolutionY)
+            {
+                // The context menu is too big for the screen.
+                // Open it so that the last item is visible at the bottom of the screen.
+                Y = WindowManager.RenderResolutionY + screenTopPointY - Height;
+            }
+            else
+            {
+                if (Y - Height < screenTopPointY)
+                {
+                    // We cannot open up fully above our location, but not also fully below.
+                    // Stick to the bottom of the screen so that the entire context menu is visible.
+                    Y = screenTopPointY + (WindowManager.RenderResolutionY - Height);
+                }
+                else
+                {
+                    // We have enough space to fully open above.
+                    Y -= Height;
+                }
+            }
+        }
 
         openedOnThisFrame = true;
     }
@@ -277,7 +315,7 @@ public class XNAContextMenu : XNAControl
             // Hide the drop-down if the left mouse button is clicked while the
             // cursor isn't on this control
             if (Cursor.LeftClicked && !leftClickHandled && !openedOnThisFrame)
-                OnLeftClick();
+                OnLeftClick(new InputEventArgs());
 
             leftClickHandled = false;
             openedOnThisFrame = false;
@@ -293,11 +331,12 @@ public class XNAContextMenu : XNAControl
         }
     }
 
-    public override void OnLeftClick()
+    public override void OnLeftClick(InputEventArgs inputEventArgs)
     {
-        base.OnLeftClick();
+        base.OnLeftClick(inputEventArgs);
 
         leftClickHandled = true;
+        inputEventArgs.Handled = true;
 
         int itemIndexOnCursor = GetItemIndexOnCursor();
 
@@ -307,17 +346,18 @@ public class XNAContextMenu : XNAControl
             {
                 Items[itemIndexOnCursor].SelectAction?.Invoke();
                 OptionSelected?.Invoke(this, new ContextMenuItemSelectedEventArgs(itemIndexOnCursor));
-
-                if (Detached)
-                    Attach();
-                Disable();
             }
-
-            return;
+            else
+            {
+                return;
+            }
         }
 
-        Attach();
+        IsActive = false;
         Disable();
+
+        if (Detached)
+            Attach();
     }
 
     /// <summary>

@@ -16,6 +16,7 @@ public class XNAMultiColumnListBox : XNAPanel
     /// <param name="windowManager">The WindowManager.</param>
     public XNAMultiColumnListBox(WindowManager windowManager) : base(windowManager)
     {
+        LineHeight = UISettings.ActiveSettings.ListBoxDefaultItemHeight.GetValueOrDefault((int)Renderer.MeasureString("Test String @", FontIndex).Y - 1);
         DrawMode = ControlDrawMode.UNIQUE_RENDER_TARGET;
         ClientRectangleUpdated += XNAMultiColumnListBox_ClientRectangleUpdated;
     }
@@ -55,7 +56,7 @@ public class XNAMultiColumnListBox : XNAPanel
     public int HeaderFontIndex { get; set; } = 1;
 
     public int FontIndex { get; set; }
-    public int LineHeight { get; set; } = 15;
+    public int LineHeight { get; set; }
 
     public bool DrawListBoxBorders { get; set; }
 
@@ -334,9 +335,9 @@ public class XNAMultiColumnListBox : XNAPanel
         AddChild(header);
     }
 
-    private void ListBox_RightClick(object sender, EventArgs e)
+    private void ListBox_RightClick(object sender, InputEventArgs e)
     {
-        OnRightClick();
+        OnRightClick(e);
     }
 
     private void AdjustExistingListBoxes()

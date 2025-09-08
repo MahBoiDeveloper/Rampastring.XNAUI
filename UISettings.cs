@@ -30,6 +30,8 @@ public class UISettings
 
     public Color BackgroundColor { get; set; } = Color.Black;
 
+    public Color SelectionColor { get; set; } = new Color(128, 128, 128);
+
     public Color FocusColor { get; set; } = new Color(64, 64, 64);
 
     public Color PanelBackgroundColor { get; set; } = new Color(32, 32, 32);
@@ -43,6 +45,10 @@ public class UISettings
     public Texture2D CheckBoxDisabledCheckedTexture { get; set; }
 
     public Texture2D CheckBoxDisabledClearTexture { get; set; }
+    public int? DropDownDefaultItemHeight { get; set; }
+    public int? ListBoxDefaultItemHeight { get; set; }
+    public int? ContextMenuDefaultItemHeight { get; set; }
+    public int? TextBoxDefaultHeight { get; set; }
 
     public float DefaultAlphaRate = 0.005f;
 
