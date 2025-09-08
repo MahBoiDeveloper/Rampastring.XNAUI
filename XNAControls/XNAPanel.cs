@@ -66,6 +66,17 @@ public class XNAPanel : XNAControl
     {
         switch (key)
         {
+            case "BackgroundAnimation":
+                BackgroundAnimation = AssetLoader.LoadAnimation(value);
+                BackgroundTexture = BackgroundAnimation.CurrentFrame;
+                return;
+            case "ResizeControlUpToAnimationSize":
+                if (BackgroundAnimation == null || !Conversions.BooleanFromString(value, false))
+                    return;
+                Height = BackgroundAnimation.Height;
+                Width = BackgroundAnimation.Width;
+                return;
+
             case "BorderColor":
                 BorderColor = AssetLoader.GetColorFromString(value);
                 return;
@@ -112,6 +123,12 @@ public class XNAPanel : XNAControl
     public override void Update(GameTime gameTime)
     {
         Alpha += AlphaRate * (float)(gameTime.ElapsedGameTime.TotalMilliseconds / 100.0);
+
+        if (BackgroundAnimation != null)
+        {
+            BackgroundAnimation.Update(gameTime);
+            BackgroundTexture = BackgroundAnimation.CurrentFrame;
+        }
 
         base.Update(gameTime);
     }
